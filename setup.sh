@@ -15,7 +15,7 @@ sudo apt install -y \
     python3-pip \
     hostapd \
     dnsmasq \
-    git
+    git \
     iptables
 
 echo "Installiere Python-Abhängigkeiten..."
