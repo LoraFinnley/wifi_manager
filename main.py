@@ -7,6 +7,7 @@ from wifi_control import WifiManager
 import os
 import subprocess
 import sys
+import time
 
 # creates .venv, if not exists
 venv_path = os.path.join(os.path.dirname(__file__), ".venv")
@@ -31,3 +32,6 @@ if not wifi.is_connected_to_internet():
     run_web_server()
 else:
     print("Internetverbindung erkannt.")
+
+    while True:
+        time.sleep(60)
