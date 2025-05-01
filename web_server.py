@@ -1,6 +1,10 @@
 from flask import Flask, request, render_template_string, redirect, url_for
 from wifi_control import WifiManager
 
+import threading
+import os
+import time
+
 app = Flask(__name__)
 wifi = WifiManager()
 
@@ -78,7 +82,8 @@ def wifi_setup():
         ssid = request.form.get("ssid")
         password = request.form.get("password")
         if ssid and password:
-            message = wifi.connect_to_network(ssid, password)
+            threading.Thread(target=async_connect_and_reboot, args=(ssid, password), daemon=True).start()
+            message = "🔄 Verbindung wird hergestellt... Das Gerät startet ggf. neu."
         else:
             message = "Bitte SSID und Passwort eingeben."
     return render_template_string(HTML_FORM, ssids=sorted(ssids), message=message, current_ssid=current_ssid)
@@ -102,6 +107,16 @@ def delete_saved():
 
 def run_web_server():
     app.run(host="0.0.0.0", port=5000)
+
+
+def async_connect_and_reboot(ssid, password):
+    result = wifi.connect_to_network(ssid, password)
+    print(f"[INFO] Verbindungsergebnis: {result}")
+    if "Verbunden mit" in result:
+        print("[INFO] Erfolgreich verbunden, starte neu...")
+        time.sleep(2) 
+        os.system("sudo reboot")
+
 
 if __name__ == "__main__":
     run_web_server()
