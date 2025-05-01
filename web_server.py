@@ -1,5 +1,3 @@
-# Flask UI for SSID+ and password input
-
 from flask import Flask, request, render_template_string, redirect, url_for
 from wifi_control import WifiManager
 
@@ -32,6 +30,9 @@ HTML_FORM = """
 <body>
   <div class="container">
     <h1>Verbinde mit einem WLAN</h1>
+    {% if current_ssid %}
+      <p class="message">Aktuell verbunden mit: <strong>{{ current_ssid }}</strong></p>
+    {% endif %}
     <form method="post">
       <label>SSID:
         <select name="ssid" required>
@@ -49,8 +50,7 @@ HTML_FORM = """
       <div class="message"><strong>{{ message }}</strong></div>
     {% endif %}
     <div class="link">
-      <a href="{{ url_for('show_saved') }}">Gespeicherte Netzwerke verwalten</a><br>
-      <a href="{{ url_for('show_available') }}">Verfügbare Netzwerke anzeigen</a>
+      <a href="{{ url_for('show_saved') }}">Gespeicherte Netzwerke verwalten</a>
     </div>
   </div>
 </body>
@@ -69,27 +69,11 @@ HTML_SAVED = """
 <p><a href="{{ url_for('wifi_setup') }}">Zurück</a></p>
 """
 
-HTML_AVAILABLE = """
-<!doctype html>
-<title>Verfügbare Netzwerke</title>
-<h1>Verfügbare Netzwerke</h1>
-<ul>
-{% for ssid in ssids %}
-  <li>{{ ssid }}</li>
-{% endfor %}
-</ul>
-<p><a href="{{ url_for('wifi_setup') }}">Zurück</a></p>
-"""
-
 @app.route("/", methods=["GET", "POST"])
 def wifi_setup():
     message = ""
-    lines = wifi.get_cached_networks()
-    ssids = set()
-    for line in lines[1:]:
-        parts = line.split()
-        if parts:
-            ssids.add(parts[0])
+    ssids = wifi.get_cached_networks()
+    current_ssid = wifi.get_current_connection()
     if request.method == "POST":
         ssid = request.form.get("ssid")
         password = request.form.get("password")
@@ -97,16 +81,16 @@ def wifi_setup():
             message = wifi.connect_to_network(ssid, password)
         else:
             message = "Bitte SSID und Passwort eingeben."
-    return render_template_string(HTML_FORM, ssids=sorted(ssids), message=message)
+    return render_template_string(HTML_FORM, ssids=sorted(ssids), message=message, current_ssid=current_ssid)
 
 @app.route("/saved")
 def show_saved():
     raw_output = wifi.list_saved_connections()
     ssids = []
     for line in raw_output:
-        parts = line.split()
-        if ":wifi" in line:
-            ssids.append(line.split(":")[0])
+        parts = line.split(":")
+        if len(parts) == 2 and parts[1] == "wifi":
+            ssids.append(parts[0])
     return render_template_string(HTML_SAVED, connections=ssids)
 
 @app.route("/delete")
@@ -115,16 +99,6 @@ def delete_saved():
     if ssid:
         wifi.delete_saved_connection(ssid)
     return redirect(url_for('show_saved'))
-
-@app.route("/available")
-def show_available():
-    lines = wifi.get_cached_networks()
-    ssids = set()
-    for line in lines[1:]:
-        parts = line.split()
-        if parts:
-            ssids.add(parts[0])
-    return render_template_string(HTML_AVAILABLE, ssids=sorted(ssids))
 
 def run_web_server():
     app.run(host="0.0.0.0", port=5000)

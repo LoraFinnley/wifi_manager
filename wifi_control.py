@@ -27,8 +27,9 @@ class WifiManager:
 
     def _scan_networks(self):
         subprocess.run(["nmcli", "device", "wifi", "rescan"])
-        output = self.run_nmcli(["device", "wifi", "list", "ifname", self._interface])
-        self._network_cache = output
+        output = self.run_nmcli(["-t", "-f", "SSID", "device", "wifi", "list", "ifname", self._interface])
+        # Filter leere SSIDs und doppelte Einträge
+        self._network_cache = list({line.strip() for line in output if line.strip()})
 
     def get_cached_networks(self):
         return self._network_cache
@@ -66,6 +67,14 @@ class WifiManager:
             return f"✅ Verbunden mit '{ssid}'"
         else:
             return f"❌ Fehler beim Verbinden mit '{ssid}': {result.stderr.strip()}"
+
+    def get_current_connection(self):
+        lines = self.run_nmcli(["-t", "-f", "active,ssid", "device", "wifi"])
+        for line in lines:
+            if line.startswith("yes:"):
+                return line.split(":", 1)[1]
+        return None
+
 
     def edit_connection(self, ssid, new_password):
         return self.run_nmcli([
