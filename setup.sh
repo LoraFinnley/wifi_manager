@@ -16,6 +16,7 @@ sudo apt install -y \
     hostapd \
     dnsmasq \
     git
+    iptables
 
 echo "Installiere Python-Abhängigkeiten..."
 pip3 install flask
