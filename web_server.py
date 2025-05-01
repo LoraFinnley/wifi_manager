@@ -88,7 +88,7 @@ def show_saved():
     raw_output = wifi.list_saved_connections()
     ssids = []
     for line in raw_output:
-        parts = line.split(":")
+        parts = line.strip().split(":")
         if len(parts) == 2 and parts[1] == "wifi":
             ssids.append(parts[0])
     return render_template_string(HTML_SAVED, connections=ssids)

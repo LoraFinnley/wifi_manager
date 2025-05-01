@@ -50,7 +50,7 @@ class WifiManager:
             return []
 
     def list_saved_connections(self):
-        return self.run_nmcli(["--terse", "--fields", "NAME,TYPE", "connection", "show"])
+        return self.run_nmcli(["-t", "-f", "NAME,TYPE", "connection", "show"])
 
     def get_connection_status(self):
         return self.run_nmcli(["device", "status"])
