@@ -1,0 +1,2 @@
+# install all packages (will be executed through setup.sh)
+flask
