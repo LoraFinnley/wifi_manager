@@ -89,8 +89,8 @@ def show_saved():
     ssids = []
     for line in raw_output:
         parts = line.strip().split(":")
-        if len(parts) == 2 and parts[1] == "wifi":
-            ssids.append(parts[0])
+        if len(parts) == 2 and "wireless" in parts[1].lower():
+            ssids.append(parts[0].strip())
     return render_template_string(HTML_SAVED, connections=ssids)
 
 @app.route("/delete")
