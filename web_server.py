@@ -13,59 +13,20 @@ HTML_FORM = """
   <meta charset="utf-8">
   <title>WiFi Setup</title>
   <style>
-    body {
-      font-family: sans-serif;
-      background-color: #f4f4f4;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-    .container {
-      background: white;
-      padding: 2em;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      max-width: 400px;
-      width: 100%;
-    }
-    h1 {
-      text-align: center;
-      color: #333;
-    }
-    form {
-      display: flex;
-      flex-direction: column;
-    }
+    body { font-family: sans-serif; background: #f4f4f4; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+    .container { background: white; padding: 2em; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); max-width: 400px; width: 100%; }
+    h1 { text-align: center; color: #333; }
+    form { display: flex; flex-direction: column; }
+    label { margin-bottom: 0.5em; }
     select, input[type="password"] {
-      padding: 0.5em;
-      margin-bottom: 1em;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      font-size: 1em;
+      width: 100%; padding: 0.5em; margin-bottom: 1em; border: 1px solid #ccc; border-radius: 5px; font-size: 1em;
     }
     input[type="submit"] {
-      padding: 0.5em;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      font-size: 1em;
-      cursor: pointer;
+      padding: 0.5em; background-color: #007bff; color: white; border: none; border-radius: 5px; font-size: 1em; cursor: pointer;
     }
-    input[type="submit"]:hover {
-      background-color: #0056b3;
-    }
-    .message {
-      margin-top: 1em;
-      text-align: center;
-      color: #333;
-    }
-    .link {
-      text-align: center;
-      margin-top: 1em;
-    }
+    input[type="submit"]:hover { background-color: #0056b3; }
+    .message { margin-top: 1em; text-align: center; color: #333; }
+    .link { text-align: center; margin-top: 1em; }
   </style>
 </head>
 <body>
@@ -88,7 +49,8 @@ HTML_FORM = """
       <div class="message"><strong>{{ message }}</strong></div>
     {% endif %}
     <div class="link">
-      <a href="{{ url_for('show_saved') }}">Gespeicherte Netzwerke verwalten</a>
+      <a href="{{ url_for('show_saved') }}">Gespeicherte Netzwerke verwalten</a><br>
+      <a href="{{ url_for('show_available') }}">Verfügbare Netzwerke anzeigen</a>
     </div>
   </div>
 </body>
@@ -107,12 +69,24 @@ HTML_SAVED = """
 <p><a href="{{ url_for('wifi_setup') }}">Zurück</a></p>
 """
 
+HTML_AVAILABLE = """
+<!doctype html>
+<title>Verfügbare Netzwerke</title>
+<h1>Verfügbare Netzwerke</h1>
+<ul>
+{% for ssid in ssids %}
+  <li>{{ ssid }}</li>
+{% endfor %}
+</ul>
+<p><a href="{{ url_for('wifi_setup') }}">Zurück</a></p>
+"""
+
 @app.route("/", methods=["GET", "POST"])
 def wifi_setup():
     message = ""
-    raw = wifi.list_available_networks()
+    lines = wifi.get_cached_networks()
     ssids = set()
-    for line in raw.splitlines()[1:]:  # skip header
+    for line in lines[1:]:
         parts = line.split()
         if parts:
             ssids.add(parts[0])
@@ -128,12 +102,11 @@ def wifi_setup():
 @app.route("/saved")
 def show_saved():
     raw_output = wifi.list_saved_connections()
-    lines = raw_output.splitlines()[1:]  # skip header
     ssids = []
-    for line in lines:
+    for line in raw_output:
         parts = line.split()
-        if parts:
-            ssids.append(parts[0])
+        if ":wifi" in line:
+            ssids.append(line.split(":")[0])
     return render_template_string(HTML_SAVED, connections=ssids)
 
 @app.route("/delete")
@@ -143,6 +116,15 @@ def delete_saved():
         wifi.delete_saved_connection(ssid)
     return redirect(url_for('show_saved'))
 
+@app.route("/available")
+def show_available():
+    lines = wifi.get_cached_networks()
+    ssids = set()
+    for line in lines[1:]:
+        parts = line.split()
+        if parts:
+            ssids.add(parts[0])
+    return render_template_string(HTML_AVAILABLE, ssids=sorted(ssids))
 
 def run_web_server():
     app.run(host="0.0.0.0", port=5000)
