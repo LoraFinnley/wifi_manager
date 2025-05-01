@@ -1,6 +1,6 @@
 # Flask UI for SSID+ and password input
 
-from flask import Flask, request, render_template_string
+from flask import Flask, request, render_template_string, redirect, url_for
 from wifi_control import WifiManager
 
 app = Flask(__name__)
@@ -38,8 +38,7 @@ HTML_FORM = """
       display: flex;
       flex-direction: column;
     }
-    input[type="text"],
-    input[type="password"] {
+    select, input[type="password"] {
       padding: 0.5em;
       margin-bottom: 1em;
       border: 1px solid #ccc;
@@ -63,6 +62,10 @@ HTML_FORM = """
       text-align: center;
       color: #333;
     }
+    .link {
+      text-align: center;
+      margin-top: 1em;
+    }
   </style>
 </head>
 <body>
@@ -70,7 +73,11 @@ HTML_FORM = """
     <h1>Verbinde mit einem WLAN</h1>
     <form method="post">
       <label>SSID:
-        <input type="text" name="ssid" required>
+        <select name="ssid" required>
+          {% for ssid in ssids %}
+          <option value="{{ ssid }}">{{ ssid }}</option>
+          {% endfor %}
+        </select>
       </label>
       <label>Passwort:
         <input type="password" name="password" required>
@@ -80,23 +87,62 @@ HTML_FORM = """
     {% if message %}
       <div class="message"><strong>{{ message }}</strong></div>
     {% endif %}
+    <div class="link">
+      <a href="{{ url_for('show_saved') }}">Gespeicherte Netzwerke verwalten</a>
+    </div>
   </div>
 </body>
 </html>
 """
 
+HTML_SAVED = """
+<!doctype html>
+<title>Gespeicherte Netzwerke</title>
+<h1>Gespeicherte Netzwerke</h1>
+<ul>
+{% for ssid in connections %}
+  <li>{{ ssid }} <a href="{{ url_for('delete_saved', ssid=ssid) }}">[Löschen]</a></li>
+{% endfor %}
+</ul>
+<p><a href="{{ url_for('wifi_setup') }}">Zurück</a></p>
+"""
+
 @app.route("/", methods=["GET", "POST"])
 def wifi_setup():
     message = ""
+    raw = wifi.list_available_networks()
+    ssids = set()
+    for line in raw.splitlines()[1:]:  # skip header
+        parts = line.split()
+        if parts:
+            ssids.add(parts[0])
     if request.method == "POST":
         ssid = request.form.get("ssid")
         password = request.form.get("password")
         if ssid and password:
-            result = wifi.connect_to_network(ssid, password)
-            message = result
+            message = wifi.connect_to_network(ssid, password)
         else:
             message = "Bitte SSID und Passwort eingeben."
-    return render_template_string(HTML_FORM, message=message)
+    return render_template_string(HTML_FORM, ssids=sorted(ssids), message=message)
+
+@app.route("/saved")
+def show_saved():
+    raw_output = wifi.list_saved_connections()
+    lines = raw_output.splitlines()[1:]  # skip header
+    ssids = []
+    for line in lines:
+        parts = line.split()
+        if parts:
+            ssids.append(parts[0])
+    return render_template_string(HTML_SAVED, connections=ssids)
+
+@app.route("/delete")
+def delete_saved():
+    ssid = request.args.get("ssid")
+    if ssid:
+        wifi.delete_saved_connection(ssid)
+    return redirect(url_for('show_saved'))
+
 
 def run_web_server():
     app.run(host="0.0.0.0", port=5000)

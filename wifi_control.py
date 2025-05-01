@@ -10,7 +10,7 @@ class WifiManager:
                 text=True
             )
             if result.returncode == 0:
-                return result.stdout.strip()
+                return f"Verbunden mit {ssid}"
             else:
                 return f"Fehler: {result.stderr.strip()}"
         except Exception as e:
@@ -31,11 +31,18 @@ class WifiManager:
 
     # connects to a new wifi network
     def connect_to_network(self, ssid, password, interface="wlan0"):
-        return self.run_nmcli([
-            "device", "wifi", "connect", ssid,
-            "password", password,
-            "ifname", interface
-        ])
+        result = subprocess.run(
+        ["nmcli", "device", "wifi", "connect", ssid,
+         "password", password, "ifname", interface],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True
+        )
+
+        if result.returncode == 0:
+            return f"Verbunden mit '{ssid}'"
+        else:
+            return f"Fehler beim Verbinden mit '{ssid}': {result.stderr.strip()}"
 
     # updates a saved connection
     def edit_connection(self, ssid, new_password):
@@ -44,6 +51,10 @@ class WifiManager:
             "wifi-sec.key-mgmt", "wpa-psk",
             "wifi-sec.psk", new_password
         ])
+    
+    # deletes a saved connection
+    def delete_saved_connection(self, ssid):
+        return self.run_nmcli(["connection", "delete", ssid])
 
     # checks connection to the internet
     def is_connected_to_internet(self):
