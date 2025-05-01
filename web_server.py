@@ -35,3 +35,6 @@ def wifi_setup():
 
 def run_web_server():
     app.run(host="0.0.0.0", port=5000)
+
+if __name__ == "__main__":
+    run_web_server()
